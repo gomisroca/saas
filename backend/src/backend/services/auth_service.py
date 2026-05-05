@@ -1,4 +1,6 @@
 import uuid
+import hashlib
+import base64
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -16,13 +18,16 @@ settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def hash_password(plain: str) -> str:
-    return pwd_context.hash(plain)
+def _prepare_password(plain: str) -> str:
+    """Hash with SHA-256 first so bcrypt never sees more than 72 bytes."""
+    digest = hashlib.sha256(plain.encode()).digest()
+    return base64.b64encode(digest).decode()
 
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(_prepare_password(plain))
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
-
+    return pwd_context.verify(_prepare_password(plain), hashed)
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
 #   access_token  — short-lived (30 min), sent with every API request
