@@ -14,7 +14,9 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # ── Models ────────────────────────────────────────────
-import backend.models.user
+import backend.models.user        # noqa: F401
+import backend.models.org         # noqa: F401
+import backend.models.membership  # noqa: F401
 
 target_metadata = Base.metadata
 
