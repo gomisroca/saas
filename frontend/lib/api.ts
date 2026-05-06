@@ -1,24 +1,12 @@
+import { TokenResponse, UserResponse } from "@/types/Auth";
+import { InvitePublicResponse, InviteResponse } from "@/types/Invites";
+import { MemberResponse, OrgResponse, OrgWithRoleResponse } from "@/types/Orgs";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-export interface UserResponse {
-  id: string;
-  email: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  email_verified_at: string | null;
-  created_at: string;
-}
-
-export interface TokenResponse {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  user: UserResponse;
-}
-
 export interface ApiError {
-  detail: string;
+  detail: string | Array<{ msg: string; loc: string[]; type: string }>;
 }
 
 // ── Token storage ─────────────────────────────────────────────────────────────
@@ -39,7 +27,7 @@ export const tokens = {
 };
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────
-async function request<T>(
+export async function request<T>(
   path: string,
   options: RequestInit = {},
   authenticated = true,
@@ -80,6 +68,12 @@ async function request<T>(
     const error: ApiError = await res
       .json()
       .catch(() => ({ detail: "Unknown error" }));
+    if (Array.isArray(error.detail)) {
+      const messages = error.detail
+        .map((e: { msg: string }) => e.msg)
+        .join(", ");
+      throw new Error(messages);
+    }
     throw new Error(error.detail);
   }
 
@@ -141,4 +135,61 @@ export const authApi = {
       },
       false,
     ),
+};
+
+// ── Orgs endpoints ──────────────────────────────────────────────────────────────────────
+export const orgsApi = {
+  list: () => request<OrgWithRoleResponse[]>("/orgs"),
+
+  create: (name: string, slug?: string) =>
+    request<OrgResponse>("/orgs", {
+      method: "POST",
+      body: JSON.stringify({ name, slug }),
+    }),
+
+  get: (orgId: string) => request<OrgResponse>(`/orgs/${orgId}`),
+
+  update: (orgId: string, data: { name?: string; logo_url?: string }) =>
+    request<OrgResponse>(`/orgs/${orgId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (orgId: string) =>
+    request<void>(`/orgs/${orgId}`, { method: "DELETE" }),
+
+  listMembers: (orgId: string) =>
+    request<MemberResponse[]>(`/orgs/${orgId}/members`),
+
+  updateMemberRole: (orgId: string, userId: string, role: string) =>
+    request<MemberResponse>(`/orgs/${orgId}/members/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    }),
+
+  removeMember: (orgId: string, userId: string) =>
+    request<void>(`/orgs/${orgId}/members/${userId}`, { method: "DELETE" }),
+};
+
+// ── Invites endpoints ────────────────────────────────────────────────────────────
+export const invitesApi = {
+  list: (orgId: string) => request<InviteResponse[]>(`/orgs/${orgId}/invites`),
+
+  create: (orgId: string, email: string, role: string) =>
+    request<InviteResponse>(`/orgs/${orgId}/invites`, {
+      method: "POST",
+      body: JSON.stringify({ email, role }),
+    }),
+
+  revoke: (orgId: string, inviteId: string) =>
+    request<void>(`/orgs/${orgId}/invites/${inviteId}`, { method: "DELETE" }),
+
+  getByToken: (token: string) =>
+    request<InvitePublicResponse>(`/invites/${token}`, {}, false),
+
+  accept: (token: string) =>
+    request<{ org_id: string; role: string }>("/invites/accept", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
 };
