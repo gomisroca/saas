@@ -1,4 +1,5 @@
 import { TokenResponse, UserResponse } from "@/types/Auth";
+import { BillingStatus } from "@/types/Billing";
 import { InvitePublicResponse, InviteResponse } from "@/types/Invites";
 import { MemberResponse, OrgResponse, OrgWithRoleResponse } from "@/types/Orgs";
 
@@ -191,5 +192,21 @@ export const invitesApi = {
     request<{ org_id: string; role: string }>("/invites/accept", {
       method: "POST",
       body: JSON.stringify({ token }),
+    }),
+};
+
+// ── Billing endpoints ────────────────────────────────────────────────────────────
+export const billingApi = {
+  getStatus: (orgId: string) =>
+    request<BillingStatus>(`/orgs/${orgId}/billing`),
+
+  createCheckout: (orgId: string) =>
+    request<{ url: string }>(`/orgs/${orgId}/billing/checkout`, {
+      method: "POST",
+    }),
+
+  createPortal: (orgId: string) =>
+    request<{ url: string }>(`/orgs/${orgId}/billing/portal`, {
+      method: "POST",
     }),
 };
