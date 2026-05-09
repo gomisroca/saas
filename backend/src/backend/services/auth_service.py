@@ -17,7 +17,6 @@ settings = get_settings()
 # ── Password hashing ──────────────────────────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-
 def _prepare_password(plain: str) -> str:
     """Hash with SHA-256 first so bcrypt never sees more than 72 bytes."""
     digest = hashlib.sha256(plain.encode()).digest()
@@ -28,6 +27,9 @@ def hash_password(plain: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(_prepare_password(plain), hashed)
+
+_DUMMY_HASH = hash_password("dummy-timing-prevention")
+
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
 #   access_token  — short-lived (30 min), sent with every API request
@@ -124,7 +126,7 @@ async def authenticate_user(
     user = await get_user_by_email(db, email)
     if not user:
         # Dummy hash to prevent timing attacks
-        verify_password("dummy", "$2b$12$dummyhashthatisnevergoingtowork00000000000000000000000")
+        verify_password("dummy", _DUMMY_HASH)
         return None
 
     if not user.hashed_password:
