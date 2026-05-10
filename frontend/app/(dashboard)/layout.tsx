@@ -23,6 +23,32 @@ import {
 } from "lucide-react";
 import { useOrg } from "@/contexts/org";
 import { useAuth } from "@/contexts/auth";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function SidebarSkeleton() {
+  return (
+    <div className="flex h-screen bg-background">
+      <aside className="w-56 border-r flex flex-col py-4 px-2 shrink-0">
+        <div className="mb-4 px-1">
+          <Skeleton className="h-9 w-full" />
+        </div>
+        <div className="flex-1 space-y-1">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
+        <div className="border-t pt-3 mt-3 px-1 space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </aside>
+      <main className="flex-1 p-8">
+        <Skeleton className="h-8 w-48 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </main>
+    </div>
+  );
+}
 
 function OrgSwitcher() {
   const { orgs, activeOrg, setActiveOrg } = useOrg();
@@ -104,7 +130,7 @@ export default function DashboardLayout({
     }
   }, [authLoading, orgLoading, user, activeOrg, router, pathname]);
 
-  if (authLoading || orgLoading || !user) return null;
+  if (authLoading || orgLoading || !user) return <SidebarSkeleton />;
 
   function handleLogout() {
     logout();
