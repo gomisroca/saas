@@ -4,6 +4,7 @@ import { Toaster } from "sileo";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/auth";
 import { OrgProvider } from "@/contexts/org";
+import { ThemeProvider } from "next-themes";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -18,14 +19,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={geist.className}>
-        <AuthProvider>
-          <OrgProvider>
-            {children}
-            <Toaster position="bottom-right" />
-          </OrgProvider>
-        </AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <OrgProvider>
+              {children}
+              <Toaster position="bottom-right" />
+            </OrgProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
