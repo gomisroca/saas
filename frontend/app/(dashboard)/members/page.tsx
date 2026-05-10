@@ -40,6 +40,39 @@ import { invitesApi, orgsApi } from "@/lib/api";
 import { MemberResponse } from "@/types/Orgs";
 import { InviteResponse } from "@/types/Invites";
 import { useOrg } from "@/contexts/org";
+import { sileo } from "sileo";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function MembersSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-4 w-48 mt-2" />
+        </div>
+        <Skeleton className="h-9 w-36" />
+      </div>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-24" />
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-6 py-4">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-6 w-20" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 // ── Role badge ────────────────────────────────────────────────────────────────
 function RoleBadge({ role }: { role: string }) {
@@ -193,34 +226,34 @@ export default function MembersPage() {
       await orgsApi.removeMember(activeOrg.id, userId);
       setMembers((prev) => prev.filter((m) => m.user_id !== userId));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to remove member");
+      sileo.error({
+        title: "Failed to remove member",
+        description: err instanceof Error ? err.message : undefined,
+      });
     }
   }
 
   async function handleRoleChange(userId: string, newRole: string) {
     if (!activeOrg) return;
-    try {
-      await orgsApi.updateMemberRole(activeOrg.id, userId, newRole);
-      setMembers((prev) =>
-        prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m)),
-      );
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update role");
-    }
+    await orgsApi.updateMemberRole(activeOrg.id, userId, newRole).catch(() => {
+      sileo.error({ title: "Failed to load members" });
+      setLoading(false);
+    });
+    setMembers((prev) =>
+      prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m)),
+    );
   }
 
   async function handleRevokeInvite(inviteId: string) {
     if (!activeOrg || !confirm("Revoke this invite?")) return;
-    try {
-      await invitesApi.revoke(activeOrg.id, inviteId);
-      setInvites((prev) => prev.filter((i) => i.id !== inviteId));
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to revoke invite");
-    }
+    await invitesApi.revoke(activeOrg.id, inviteId).catch(() => {
+      sileo.error({ title: "Failed to load members" });
+      setLoading(false);
+    });
+    setInvites((prev) => prev.filter((i) => i.id !== inviteId));
   }
 
-  if (loading)
-    return <div className="text-muted-foreground text-sm">Loading…</div>;
+  if (loading) return <MembersSkeleton />;
   if (error) return <div className="text-destructive text-sm">{error}</div>;
 
   return (

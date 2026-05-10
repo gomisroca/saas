@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth";
 import { useOrg } from "@/contexts/org";
@@ -16,31 +16,32 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { sileo } from "sileo";
 
 // ── Profile settings ──────────────────────────────────────────────────────────
 function ProfileSettings() {
   const { user } = useAuth();
   const [fullName, setFullName] = useState(user?.full_name ?? "");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setSuccess(false);
-    setLoading(true);
-    try {
-      await request("/auth/me", {
-        method: "PATCH",
-        body: JSON.stringify({ full_name: fullName || null }),
-      });
-      setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
-    } finally {
-      setLoading(false);
-    }
+    startTransition(() => {
+      sileo.promise(
+        request("/auth/me", {
+          method: "PATCH",
+          body: JSON.stringify({ full_name: fullName || null }),
+        }),
+        {
+          loading: { title: "Saving…" },
+          success: { title: "Profile updated" },
+          error: (err) => ({
+            title: "Failed to update profile",
+            description: err instanceof Error ? err.message : undefined,
+          }),
+        },
+      );
+    });
   }
 
   return (
@@ -51,12 +52,6 @@ function ProfileSettings() {
           <CardDescription>Update your personal details.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {success && (
-            <p className="text-sm text-green-600 dark:text-green-400">
-              Profile updated.
-            </p>
-          )}
           <div className="space-y-2">
             <Label htmlFor="full-name">Full name</Label>
             <Input
@@ -80,8 +75,8 @@ function ProfileSettings() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Save changes"}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Saving…" : "Save changes"}
           </Button>
         </CardFooter>
       </form>
@@ -93,30 +88,29 @@ function ProfileSettings() {
 function OrgSettings() {
   const { activeOrg, setActiveOrg, refresh } = useOrg();
   const [name, setName] = useState(activeOrg?.name ?? "");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const isAdmin = activeOrg?.role === "admin" || activeOrg?.role === "owner";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!activeOrg) return;
-    setError("");
-    setSuccess(false);
-    setLoading(true);
-    try {
-      const updated = await orgsApi.update(activeOrg.id, { name });
-      setActiveOrg({ ...activeOrg, name: updated.name });
-      await refresh();
-      setSuccess(true);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update organisation",
+    startTransition(() => {
+      sileo.promise(
+        orgsApi.update(activeOrg.id, { name }).then((updated) => {
+          setActiveOrg({ ...activeOrg, name: updated.name });
+          return refresh();
+        }),
+        {
+          loading: { title: "Saving…" },
+          success: { title: "Organisation updated" },
+          error: (err) => ({
+            title: "Failed to update organisation",
+            description: err instanceof Error ? err.message : undefined,
+          }),
+        },
       );
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   if (!isAdmin) return null;
@@ -131,12 +125,6 @@ function OrgSettings() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {success && (
-            <p className="text-sm text-green-600 dark:text-green-400">
-              Organisation updated.
-            </p>
-          )}
           <div className="space-y-2">
             <Label htmlFor="org-name">Name</Label>
             <Input
@@ -160,8 +148,8 @@ function OrgSettings() {
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Save changes"}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Saving…" : "Save changes"}
           </Button>
         </CardFooter>
       </form>
@@ -174,7 +162,6 @@ function DangerZone() {
   const { activeOrg, refresh } = useOrg();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   if (activeOrg?.role !== "owner") return null;
 
@@ -194,16 +181,16 @@ function DangerZone() {
       return;
     }
 
-    setError("");
     setLoading(true);
     try {
       await orgsApi.delete(activeOrg.id);
       await refresh();
       router.replace("/orgs/new");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete organisation",
-      );
+      sileo.error({
+        title: "Failed to delete organisation",
+        description: err instanceof Error ? err.message : undefined,
+      });
       setLoading(false);
     }
   }
@@ -217,7 +204,6 @@ function DangerZone() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {error && <p className="text-sm text-destructive">{error}</p>}
         <p className="text-sm text-muted-foreground">
           Deleting <strong>{activeOrg?.name}</strong> will remove all members,
           invites, and data. This action is irreversible.

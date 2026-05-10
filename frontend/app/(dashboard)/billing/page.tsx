@@ -15,6 +15,40 @@ import { CheckCircle2, XCircle, Zap } from "lucide-react";
 import { useOrg } from "@/contexts/org";
 import { BillingStatus } from "@/types/Billing";
 import { billingApi } from "@/lib/api";
+import { sileo } from "sileo";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function BillingSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <Skeleton className="h-9 w-28" />
+        <Skeleton className="h-4 w-64 mt-2" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl pt-4">
+        {[...Array(2)].map((_, i) => (
+          <Card key={i} className="flex flex-col">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+            </CardHeader>
+            <CardContent className="flex-1 space-y-3">
+              {[...Array(3)].map((_, j) => (
+                <Skeleton key={j} className="h-4 w-full" />
+              ))}
+            </CardContent>
+            <CardFooter>
+              <Skeleton className="h-9 w-full" />
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Plan details ──────────────────────────────────────────────────────────────
 const PLANS = {
@@ -142,7 +176,6 @@ export default function BillingPage() {
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const isOwner = activeOrg?.role === "owner";
 
@@ -159,7 +192,7 @@ export default function BillingPage() {
         if (!cancelled) setBilling(data);
       })
       .catch(() => {
-        if (!cancelled) setError("Failed to load billing info");
+        if (!cancelled) sileo.error({ title: "Failed to load billing info" });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -176,7 +209,9 @@ export default function BillingPage() {
       const { url } = await billingApi.createCheckout(activeOrg.id);
       window.location.href = url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start checkout");
+      sileo.error({
+        title: err instanceof Error ? err.message : "Failed to start checkout",
+      });
       setActionLoading(false);
     }
   }
@@ -188,15 +223,15 @@ export default function BillingPage() {
       const { url } = await billingApi.createPortal(activeOrg.id);
       window.location.href = url;
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to open billing portal",
-      );
+      sileo.error({
+        title:
+          err instanceof Error ? err.message : "Failed to open billing portal",
+      });
       setActionLoading(false);
     }
   }
 
-  if (loading)
-    return <div className="text-muted-foreground text-sm">Loading…</div>;
+  if (loading) return <BillingSkeleton />;
 
   const currentPlan = (billing?.plan ?? "free") as "free" | "pro";
 
@@ -220,12 +255,6 @@ export default function BillingPage() {
         <div className="flex items-center gap-2 text-sm text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800 rounded-lg px-4 py-3">
           <XCircle className="h-4 w-4 shrink-0" />
           Checkout was canceled. You have not been charged.
-        </div>
-      )}
-      {error && (
-        <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-3">
-          <XCircle className="h-4 w-4 shrink-0" />
-          {error}
         </div>
       )}
 
