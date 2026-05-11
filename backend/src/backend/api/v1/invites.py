@@ -13,15 +13,16 @@ from backend.services.invite_service import (
     get_invite_public,
     list_org_invites,
     revoke_invite,
-    send_invite_email,
 )
+from backend.services.email_service import send_invite_email
 from backend.services.org_service import get_org_by_id, require_role
+from backend.config import get_settings
 
+settings = get_settings()
 router = APIRouter(tags=["invites"])
 
 
 # ── Org-scoped invite endpoints ───────────────────────────────────────────────
-
 @router.post(
     "/orgs/{org_id}/invites",
     response_model=InviteResponse,
@@ -48,7 +49,13 @@ async def create(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
-    send_invite_email(invite)
+    send_invite_email(
+        to=invite.email,
+        org_name=invite.org.name,
+        inviter_email=invite.inviter.email,
+        role=invite.role,
+        invite_url=f"{settings.invite_url}?token={invite.token}",
+    )
 
     return InviteResponse(
         id=invite.id,
@@ -102,7 +109,6 @@ async def revoke(
 
 
 # ── Token-based endpoints (no org_id needed) ──────────────────────────────────
-
 @router.get("/invites/{token}", response_model=InvitePublicResponse)
 async def get_invite(
     token: str,

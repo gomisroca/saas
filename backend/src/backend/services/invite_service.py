@@ -196,20 +196,3 @@ async def revoke_invite(
         raise ValueError("Invite not found")
     await db.delete(invite)
     await db.flush()
-
-
-# ── Email sending (stub) ──────────────────────────────────────────────────────
-def send_invite_email(invite: Invite) -> None:
-    """
-    Send the invite email. Currently prints to console for local development.
-    Replace the print() with a real Resend API call when email is configured.
-    """
-    invite_url = f"{settings.invite_url}?token={invite.token}"
-    print(f"\n{'='*60}")
-    print(f"INVITE EMAIL (stub)")
-    print(f"To:      {invite.email}")
-    print(f"Org:     {invite.org.name}")
-    print(f"Role:    {invite.role}")
-    print(f"Link:    {invite_url}")
-    print(f"Expires: {invite.expires_at.strftime('%Y-%m-%d %H:%M UTC')}")
-    print(f"{'='*60}\n")
