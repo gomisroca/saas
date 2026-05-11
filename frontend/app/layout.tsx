@@ -9,8 +9,11 @@ import { ThemeProvider } from "next-themes";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Trellis",
-  description: "Multi-tenant SaaS",
+  title: {
+    default: "Trellis",
+    template: "%s | Trellis",
+  },
+  description: "Multi-tenant SaaS starter — built to be extended and shipped.",
 };
 
 export default function RootLayout({
